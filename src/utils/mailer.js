@@ -3,25 +3,32 @@ import crypto from "crypto";
 import bcrypt from "bcrypt";
 import { pool } from "../db/pool.js";
 
-const transporter = nodemailer.createTransport({
-  host: process.env.SMTP_HOST,
-  port: Number(process.env.SMTP_PORT || 587),
-  auth: { user: process.env.SMTP_USER, pass: process.env.SMTP_PASS },
-});
+const smtpConfigured = Boolean(process.env.SMTP_HOST && process.env.SMTP_USER && process.env.SMTP_PASS);
+
+const transporter = smtpConfigured
+  ? nodemailer.createTransport({
+      host: process.env.SMTP_HOST,
+      port: Number(process.env.SMTP_PORT || 587),
+      auth: { user: process.env.SMTP_USER, pass: process.env.SMTP_PASS },
+    })
+  : null;
 
 export async function sendMail(to, subject, html) {
-  if (process.env.NODE_ENV !== "production") {
-    console.log(`\n[mail:dev] Kime: ${to}\n[mail:dev] Konu: ${subject}\n[mail:dev] İçerik: ${html}\n`);
-    return; // Geliştirme ortamında gerçek mail göndermez, konsola yazar
+  if (!smtpConfigured) {
+    console.log(`\n[mail:henüz-yapılandırılmadı] Kime: ${to}\n[mail] Konu: ${subject}\n[mail] İçerik: ${html}\n`);
+    return;
   }
-  await transporter.sendMail({ from: process.env.MAIL_FROM, to, subject, html });
+  try {
+    await transporter.sendMail({ from: process.env.MAIL_FROM, to, subject, html });
+  } catch (err) {
+    console.error(`[mail:hata] "${to}" adresine gönderilemedi:`, err.message);
+  }
 }
 
 function genSixDigitCode() {
   return crypto.randomInt(100000, 999999).toString();
 }
 
-/** Yeni bir doğrulama kodu üretir, hash'ini veritabanına kaydeder, düz kodu döner (mail için). */
 export async function createVerificationCode(userId, purpose, target = null, ttlMinutes = 5) {
   const code = genSixDigitCode();
   const codeHash = await bcrypt.hash(code, 10);
@@ -36,7 +43,6 @@ export async function createVerificationCode(userId, purpose, target = null, ttl
 
 const DUMMY_HASH = "$2b$10$C6UzMDM.H6dfI/f/IKcEeO/dpv2C/JWNfBK/9NRIQY8LWc1JLIfoi";
 
-/** Kullanıcının girdiği kodu doğrular. Başarılıysa kaydı tüketir ve true döner. */
 export async function verifyCode(userId, purpose, inputCode) {
   const { rows } = await pool.query(
     `SELECT * FROM verification_codes
@@ -46,8 +52,6 @@ export async function verifyCode(userId, purpose, inputCode) {
   );
   const record = rows[0];
 
-  // Kayıt bulunamasa bile bcrypt karşılaştırması yapılır — yanıt süresinden
-  // "bekleyen bir kod var mı yok mu" bilgisinin sızmasını önlemek için.
   const matches = await bcrypt.compare(inputCode || "", record?.code_hash || DUMMY_HASH);
   if (!record || !matches) return { valid: false, reason: !record ? "expired_or_missing" : "wrong_code" };
 
