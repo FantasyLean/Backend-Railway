@@ -1,0 +1,34 @@
+{
+  "name": "alpeptide-backend",
+  "version": "1.0.0",
+  "description": "Alpeptide gerçek backend — kimlik doğrulama, siparişler, ticket sistemi ve otomatik kripto ödeme onayı",
+  "type": "module",
+  "main": "src/server.js",
+  "scripts": {
+    "dev": "node --watch src/server.js",
+    "start": "node src/server.js",
+    "db:migrate": "node src/db/migrate.js",
+    "db:seed": "node src/db/seed.js"
+  },
+  "dependencies": {
+    "express": "^4.19.2",
+    "pg": "^8.12.0",
+    "bcrypt": "^5.1.1",
+    "jsonwebtoken": "^9.0.2",
+    "dotenv": "^16.4.5",
+    "cors": "^2.8.5",
+    "axios": "^1.7.7",
+    "node-cron": "^3.0.3",
+    "otplib": "^12.0.1",
+    "qrcode": "^1.5.4",
+    "nodemailer": "^6.9.14",
+    "express-rate-limit": "^7.4.0",
+    "express-slow-down": "^2.0.3",
+    "helmet": "^7.1.0",
+    "compression": "^1.7.4",
+    "multer": "^1.4.5-lts.1",
+    "cloudinary": "^2.5.1",
+    "file-type": "^19.5.0",
+    "sanitize-html": "^2.13.1"
+  }
+}
